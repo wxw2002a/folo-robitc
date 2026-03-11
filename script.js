@@ -9,8 +9,6 @@ const counters = [...document.querySelectorAll('[data-count]')];
 const bgVideos = [...document.querySelectorAll('.bg-video')];
 const heroVideo = document.querySelector('.hero-video');
 
-let countersStarted = false;
-
 const updateHeaderState = () => {
   if (!header) {
     return;
@@ -18,9 +16,22 @@ const updateHeaderState = () => {
   header.classList.toggle('scrolled', window.scrollY > 24);
 };
 
+const getNavHash = (link) => {
+  const href = link.getAttribute('href');
+  if (!href || !href.includes('#')) {
+    return null;
+  }
+  const parts = href.split('#');
+  return parts[parts.length - 1] || null;
+};
+
 const setActiveNav = (id) => {
   navLinks.forEach((link) => {
-    const active = link.getAttribute('href') === `#${id}`;
+    const hash = getNavHash(link);
+    if (!hash) {
+      return;
+    }
+    const active = hash === id;
     link.classList.toggle('active', active);
   });
 
@@ -51,14 +62,6 @@ const animateCounter = (node) => {
   requestAnimationFrame(tick);
 };
 
-const runCountersOnce = () => {
-  if (countersStarted) {
-    return;
-  }
-  counters.forEach((counter) => animateCounter(counter));
-  countersStarted = true;
-};
-
 if (sections.length) {
   const sectionObserver = new IntersectionObserver(
     (entries) => {
@@ -70,15 +73,29 @@ if (sections.length) {
         const id = entry.target.id;
         setActiveNav(id);
 
-        if (id === 'hero') {
-          runCountersOnce();
-        }
       });
     },
     { threshold: 0.4 }
   );
 
   sections.forEach((section) => sectionObserver.observe(section));
+}
+
+if (counters.length) {
+  const counterObserver = new IntersectionObserver(
+    (entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+        animateCounter(entry.target);
+        observer.unobserve(entry.target);
+      });
+    },
+    { threshold: 0.65 }
+  );
+
+  counters.forEach((counter) => counterObserver.observe(counter));
 }
 
 if (revealItems.length) {
@@ -160,4 +177,4 @@ window.addEventListener('resize', () => {
 });
 
 updateHeaderState();
-setActiveNav('hero');
+setActiveNav(sections[0]?.id || 'hero');
